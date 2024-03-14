@@ -14,6 +14,7 @@ class TransferNet(nn.Module):
         super(TransferNet, self).__init__()
         self.base_network = backbones.get_backbone(base_net)
         self.use_bottleneck = use_bottleneck
+        self.use_bottleneck = use_bottleneck
         self.transfer_loss = transfer_loss
         if self.use_bottleneck:
             bottleneck_list = [
@@ -35,14 +36,14 @@ class TransferNet(nn.Module):
                 nn.Linear(64, num_class)
                 ]
             self.classifier_layer = nn.Sequential(*classifier_list)
-        transfer_loss_args = {
+        self.transfer_loss_args = {
             "loss_type": self.transfer_loss,
             "max_iter": max_iter,
             "num_class": num_class
         }
         self.softmax = nn.Softmax(dim=1)
-        self.adapt_loss = TransferLoss(**transfer_loss_args)
         self.criterion = nn.CrossEntropyLoss()
+        self.adapt_loss = TransferLoss(**self.transfer_loss_args)
 
     def forward(self, source, target, source_label):
         source = self.base_network(source)
@@ -67,6 +68,14 @@ class TransferNet(nn.Module):
         elif self.transfer_loss == 'bnm':
             tar_clf = self.classifier_layer(target)
             target = nn.Softmax(dim=1)(tar_clf)
+        elif self.transfer_loss == 'LWD':
+            source_clf = self.classifier_layer(source)
+            wd_weights = self.classifier_layer(target)
+            kwargs['source_label'] = source_label
+            kwargs['source_logits'] = torch.nn.functional.softmax(source_clf, dim=1)
+            kwargs['wd_weights'] = wd_weights
+            target_clf = self.classifier_layer(target)
+            kwargs['target_logits'] = torch.nn.functional.softmax(target_clf, dim=1)
 
         transfer_loss = self.adapt_loss(source, target, **kwargs)
         return clf_loss, transfer_loss
@@ -105,7 +114,6 @@ class TransferNet(nn.Module):
 
         return clf_loss, source
 
-
     def predict(self, x):
         x = self.base_network(x)
         if self.use_bottleneck:
@@ -118,7 +126,6 @@ class TransferNet(nn.Module):
             self.adapt_loss.loss_func.update_dynamic_factor(*args, **kwargs)
         else:
             pass
-
 
     def output_feature(self, x):
         feature = self.base_network(x)

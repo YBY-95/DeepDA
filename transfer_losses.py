@@ -18,6 +18,10 @@ class TransferLoss(nn.Module):
             self.loss_func = DAANLoss(**kwargs)
         elif loss_type == "bnm":
             self.loss_func = BNM
+        elif loss_type == "WD":
+            self.loss_func = WDLoss(**kwargs)
+        elif loss_type == "LWD":
+            self.loss_func = LWDLoss(**kwargs)
         else:
             print("WARNING: No valid transfer loss function is used.")
             self.loss_func = lambda x, y: 0 # return 0
