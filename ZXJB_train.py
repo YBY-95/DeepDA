@@ -9,7 +9,7 @@ import numpy as np
 import random
 import sys
 import pandas as pd
-import heartrate
+# import heartrate
 
 
 # heartrate.trace(browser=True)
@@ -207,8 +207,8 @@ def test(model, test_loader, args):
 
 def train(source_loader, target_train_loader, target_test_loader, model, optimizer, lr_scheduler, args):
     if args.pretrain is False:
-        ckpt = torch.load(r'D:\\python_workfile\\TL-comparsion\\Deep\\pretrain\\'
-                          + args.backbone + '\\' + args.data_type + '\\' + args.src_domain + '.tar')
+        ckpt = torch.load(r'/root/autodl-tmp/project/Deep_DA/pretrain/ZXJB/'
+                          + args.backbone + '/' + args.data_type + '/' + args.src_domain + '.tar')
         model.load_state_dict(ckpt["state_dict"], strict=False)
     len_source_loader = len(source_loader)
     len_target_loader = len(target_train_loader)
@@ -283,14 +283,16 @@ def main():
     # 训练模式，orig_sample 原始数据训练， resampled 重采样处理数据训练， freq_domain频域数据训练， t-f时频域图片数据
     data_type_list = ['orig_sample', 'resampled', 'freq_sample', 'time-freq', 'envo']
     data_type = data_type_list[0]
-    # Transfer_task指的是不同的迁移任务： 相同速度不同设备same_speed, 相同设备不同速度：same_equip
-    Transfer_task = 'same_equip'
+    # Transfer_task指的是不同的迁移任务： 相同速度不同设备same_speed, 相同设备不同速度：same_equip, 不同转速 var_speed
+    Transfer_task = 'hybrid'
     Attention = False
     # 模型参数目录
-    config_dir = r'D:\python_workfile\TL-comparsion\Deep\YAML'
+    config_dir = r'./YAML'
+    # data_dir = r'/root/autodl-tmp/sample/smple_DeepDADG'
     data_dir = r'D:\DATABASE\ZXJ_test_data\fault_bearing_standard_sample\smple_DeepDADG'
-    model_list = os.listdir(config_dir)
-    domain_list = os.listdir(data_dir+'\\'+data_type)
+    # model_list = os.listdir(config_dir)
+    model_list = ['LWD.yaml']
+    domain_list = os.listdir(data_dir+'/'+data_type)
 
     for model_config in model_list:
         sys.argv[1] = '--config'
@@ -300,11 +302,14 @@ def main():
             # 根据迁移的方式 确定迁移训练的目标域和源域
             for j in domain_list:
                 if Transfer_task == 'same_speed':
-                    if i.split('_')[0] != j.split('_')[0]:
+                    if i.split('_')[1] != j.split('_')[1]:
                         continue
-                # elif Transfer_task == 'same_equip':
-                #     if i.split('_')[1] != j.split('_')[1]:
-                #         continue
+                elif Transfer_task == 'same_equip':
+                    if i.split('_')[2] != j.split('_')[2]:
+                        continue
+                elif Transfer_task == 'var_speed':
+                    if i.split('_')[1] == j.split('_')[1] or i.split('_')[2] != j.split('_')[2]:
+                        continue
                 if i == j:
                     continue
 
@@ -323,8 +328,8 @@ def main():
                     setattr(args, "backbone", args.backbone + '_attention')
                 # 如果/pretrain 目录下无预训练权重则进行预训练
                 if os.path.exists(
-                        r'D:\\python_workfile\\TL-comparsion\\Deep\\pretrain\\ZXJB\\'
-                        + args.backbone + '\\' + args.data_type + '\\'
+                         './pretrain/ZXJB/'
+                        + args.backbone + '/' + args.data_type + '/'
                         + i + '.tar'):
                     setattr(args, "pretrain", False)
                 else:
